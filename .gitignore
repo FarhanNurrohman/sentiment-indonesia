@@ -1,8 +1,8 @@
-.venv\
-__pycache__\
-.venv\*
+.venv/
+__pycache__/
+.venv/*
 .dockerignore
-__pycache__\*
+__pycache__/*
 __pycache__/
 __pycache__/*
 .venv/*

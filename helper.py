@@ -18,7 +18,7 @@ class RequestIDFormatter(logging.Formatter):
 def setup(path):
     try:
         loading_model_conv, is_model_loaded = load_file(path)
-        logger.debug(f"loading model and weights for {loading_model_conv["metadata"]["svm_versi"]} and {loading_model_conv["metadata"]["cnb_versi"]}")
+        logger.debug(f"loading model and weights for {loading_model_conv['metadata']['svm_versi']} and {loading_model_conv['metadata']['cnb_versi']}")
 
         logger.info("Initializing models")
         logger.info("Initializing TF-IDF Vectorizer")
