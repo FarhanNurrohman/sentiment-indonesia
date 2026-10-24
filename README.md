@@ -4,8 +4,10 @@ Multi-model sentiment analysis for Indonesian text, deployed as **two independen
 
 | Service | Models | Platform | Live Demo |
 |---|---|---|---|
-| **Web UI** | SVM, Naive Bayes, IndoBERT | HF Spaces (Gradio + ZeroGPU) | [sentiment-indo.hf.space](https://huggingface.co/spaces/USERNAME/sentiment-indo) |
-| **REST API** | SVM, Naive Bayes | Render (Docker) | [sentiment-svm-nb.onrender.com](https://sentiment-svm-nb.onrender.com) |
+| **Web UI** | SVM, Naive Bayes, IndoBERT | HF Spaces (Gradio + ZeroGPU) | [Sentiment App](https://farhannurrahman95-sentiment-resetindonesia.hf.space) |
+| **REST API** | SVM, Naive Bayes | SnapDeploy (Docker) | [API Endpoint](https://sentiment-indonesia-8b9d3.containers.snapdeploy.app) |
+
+*Repository for the Web UI: [Hugging Face Space](https://huggingface.co/spaces/farhannurrahman95/sentiment-resetindonesia)*
 
 ---
 
@@ -24,68 +26,29 @@ This is not a notebook-turned-API. It's a **production-oriented ML serving stack
 ---
 
 ## 🏗️ Architecture
-┌─────────────────────────────────────┐
-│ User / Client │
-└──────────────┬──────────────────────┘
-│
-┌────────────────────┼────────────────────┐
-│ │
-▼ ▼
-┌──────────────────────┐ ┌──────────────────────┐
-│ HF Spaces (Gradio) │ │ Render (Docker) │
-│ ZeroGPU │ │ Free tier 512 MB │
-│ │ │ │
-│ ┌────────────────┐ │ │ ┌────────────────┐ │
-│ │ SVM │ │ │ │ SVM │ │
-│ ├────────────────┤ │ │ ├────────────────┤ │
-│ │ Naive Bayes │ │ │ │ Naive Bayes │ │
-│ ├────────────────┤ │ │ └────────────────┘ │
-│ │ IndoBERT │ │ │ │
-│ │ (NumPy, 440MB) │ │ │ Flask + Waitress │
-│ └────────────────┘ │ │ REST API │
-│ │ │ │
-│ Gradio UI │ │ /health │
-│ (dropdown + input) │ │ /predict/svm │
-└──────────────────────┘ │ /predict/naive-bayes│
-└──────────────────────┘
 
-
-**Why two services?**
-- IndoBERT needs ~1 GB RAM — exceeds Render free tier's 512 MB.
-- HF Spaces ZeroGPU handles the memory-heavy model; Render handles the lightweight REST endpoints.
-- Separate deployments = **independent failure domains**. One service can be upgraded or restarted without affecting the other.
-
----
-
-## 🤖 Models
-
-### 1. Multi-Class SVM (from scratch)
-- **Implementation**: custom `MultiClassSVM_Vectorized` — no `sklearn.svm`.
-- **Features**: TF-IDF (fit on training set only, saved as part of the bundle).
-- **Task**: binary sentiment (negative vs non-negative).
-
-### 2. Complement Naive Bayes (from scratch)
-- **Implementation**: custom `ComplementNaiveBayes` — no `sklearn.naive_bayes`.
-- **Suitable for**: imbalanced datasets (complement NB weights the *complement* of each class).
-- **Features**: same TF-IDF bundle as SVM.
-
-### 3. IndoBERT (from scratch, NumPy serving)
-- **Implementation**: full BERT architecture written from scratch — embedding, 12 encoder layers, multi-head attention, pooler, classifier head. No HuggingFace `AutoModel`.
-- **Training**: CuPy (GPU) on Kaggle.
-- **Serving**: NumPy (CPU) — converted for portability, weights verified against training output.
-- **Weights**: 440 MB, loaded once at startup.
-
-**Why from scratch?** To verify understanding of transformer internals — attention math, layer norm, GELU, positional encoding. The skill is not just "call `AutoModel.from_pretrained`" but "know what's inside it."
-
----
-
-## 🚀 REST API (Render)
-
-**Base URL**: `https://sentiment-svm-nb.onrender.com`
-
-> **Note**: free tier sleeps after 15 minutes of inactivity. First request after idle takes ~30 seconds (cold start).
-
-### `GET /health`
-
-```bash
-curl https://sentiment-svm-nb.onrender.com/health
+```text
+                    ┌─────────────────────────────────────┐
+                    │         User / Client               │
+                    └──────────────┬──────────────────────┘
+                                   │
+              ┌────────────────────┼────────────────────┐
+              │                                         │
+              ▼                                         ▼
+   ┌──────────────────────┐              ┌──────────────────────┐
+   │  HF Spaces (Gradio)  │              │  SnapDeploy (Docker) │
+   │  ZeroGPU             │              │  Free tier 512 MB    │
+   │                      │              │                      │
+   │  ┌────────────────┐  │              │  ┌────────────────┐  │
+   │  │ SVM            │  │              │  │ SVM            │  │
+   │  ├────────────────┤  │              │  ├────────────────┤  │
+   │  │ Naive Bayes    │  │              │  │ Naive Bayes    │  │
+   │  ├────────────────┤  │              │  └────────────────┘  │
+   │  │ IndoBERT       │  │              │                      │
+   │  │ (NumPy, 440MB) │  │              │  Flask + Waitress    │
+   │  └────────────────┘  │              │  REST API            │
+   │                      │              │                      │
+   │  Gradio UI           │              │  /health             │
+   │  (dropdown + input)  │              │  /predict/svm        │
+   └──────────────────────┘              │  /predict/naive-bayes│
+                                         └──────────────────────┘
